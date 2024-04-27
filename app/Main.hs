@@ -1,4 +1,6 @@
 module Main where
 
+import Library
+
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = putStrLn $ show $ myAdd 114 514

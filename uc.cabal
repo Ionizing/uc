@@ -54,6 +54,19 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
+library
+    -- Directories containing source files.
+    hs-source-dirs:   library
+    exposed-modules:  Library
+
+    -- Other library packages from which modules are imported.
+    build-depends:    base ^>=4.19.1.0
+                    , parsec == 3.1.17.0
+
+    -- Base language which the package is written in.
+    default-language: Haskell2010
+
+
 executable uc
     -- Import common warning flags.
     import:           warnings
@@ -69,6 +82,7 @@ executable uc
 
     -- Other library packages from which modules are imported.
     build-depends:    base ^>=4.19.1.0
+                    , uc
 
     -- Directories containing source files.
     hs-source-dirs:   app
