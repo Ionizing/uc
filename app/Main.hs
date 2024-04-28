@@ -3,4 +3,5 @@ module Main where
 import Library
 
 main :: IO ()
-main = putStrLn $ show $ map parseMetricPrefix "afpnumKMGTPEs"
+main = do
+    putStrLn $ show $ parseMetricPrefix 'k'

@@ -1,5 +1,5 @@
 module Library
-    ( MetricPrefix
+    ( MetricPrefix (..)         -- (..) means exporting all data constructors
     , parseMetricPrefix
     ) where
 
@@ -30,9 +30,12 @@ parseMetricPrefix ch = case ch of
     'u' -> Just Micro
     'm' -> Just Milli
     'K' -> Just Kilo
+    'k' -> Just Kilo
     'M' -> Just Mega
     'G' -> Just Giga
+    'g' -> Just Giga
     'T' -> Just Tera
+    't' -> Just Tera
     'P' -> Just Peta
     'E' -> Just Exa
     _   -> Nothing
