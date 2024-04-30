@@ -1,6 +1,8 @@
 module Library
     ( MetricPrefix (..)         -- (..) means exporting all data constructors
     , parseMetricPrefix
+    , Unit (..)
+    , parseUnit
     , parseDouble
     ) where
 
@@ -11,6 +13,7 @@ import Control.Applicative
 import Control.Monad
 
 
+-- Metrix prefix parser
 data MetricPrefix =
       Atto        -- 10^-18
     | Femto       -- 10^-15
@@ -42,7 +45,7 @@ parseMetricPrefix' s
     | elem s ["T", "tera", "Tera"]   = Tera
     | elem s ["P", "peta", "Peta"]   = Peta
     | elem s ["E", "exa", "Exa"]     = Exa
-    | otherwise = error $ "Unexpected Char \"" ++ s ++ "\" for MetricPrefix"
+    | otherwise = error $ "Unexpected String \"" ++ s ++ "\" for MetricPrefix"
 
 
 parseMetricPrefix :: Parser MetricPrefix
@@ -70,27 +73,46 @@ parseMetricPrefix = do
     return $ parseMetricPrefix' str
 
 
-data Units =
-      ElectronVolt
-    | KiloCaloriePerMole
-    | KiloJoulePerMole
-    | Kelvin
-    | Hartree
-    | Wavenumber
-    | NanoMeter
-    | TeraHertz
-    deriving (Show)
+-- Unit parser
+data Unit =
+      ElectronVolt      -- eV
+    | CaloriePerMole    -- Ca/mol
+    | JoulePerMole      -- J/mol
+    | Kelvin            -- K
+    | Hartree           -- Ha
+    | Wavenumber        -- cm-1
+    | Meter             -- m
+    | Hertz             -- Hz
+    deriving (Show, Eq)
 
---instance Show Units where
-    --show ElectronVolt = "eV"
-    --show KiloCaloriePerMole = "KCal/mol"
-    --show KiloJoulePerMole = "KJ/mol"
-    --show Kelvin = "K"
-    --show Hartree = "har"
-    --show Wavenumber = "cm-1"
-    --show NanoMeter = "nm"
-    --show TeraHertz = "THz"
 
+parseUnit' :: String -> Unit
+parseUnit' s
+    | elem s ["eV", "ElectronVolt"] = ElectronVolt
+    | elem s ["Ca/mol", "Calorie/mol", "Ca", "Calorie"] = CaloriePerMole
+    | elem s ["J/mol", "Joule/mol", "J", "Joule"] = JoulePerMole
+    | elem s ["K", "Kelvin"] = Kelvin
+    | elem s ["Ha", "Hartree"] = Hartree
+    | elem s ["cm-1", "Cm-1"] = Wavenumber
+    | elem s ["m", "Meter"] = Meter
+    | elem s ["Hz", "Hertz"] = Hertz
+    | otherwise = error $ "Unexpected String \"" ++ s ++ "\" for Unit"
+
+
+parseUnit :: Parser Unit
+parseUnit = do
+    str <- choice $ fmap string' [
+          "ElectronVolt"
+        , "Ca/mol", "Calorie/mol", "Calorie"
+        , "J/mol", "Joule/mol", "Joule"
+        , "Kelvin"
+        , "Hartree", "Hartree"
+        , "Cm-1", "cm-1"
+        , "Meter"
+        , "Hertz"
+        , "eV", "Ca", "J", "K", "m", "Hz"
+        ]
+    return $ parseUnit' str
 
 
 -- Now we are going to parse the float point numbers

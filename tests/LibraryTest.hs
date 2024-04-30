@@ -3,6 +3,8 @@ module Main where
 import Library (
     MetricPrefix (..)                       -- (..) means importing all data constructors
   , parseMetricPrefix
+  , Unit (..)
+  , parseUnit
     )
 import Test.HUnit
 import qualified System.Exit as Exit
@@ -10,8 +12,9 @@ import Text.Parsec.String
 import Text.Parsec
 
 
-testAssertSingle :: (Eq a, Show a) => a -> (Parser a) -> String -> String -> Test
-testAssertSingle expect pfun instr msg = TestCase $ let
+testAssertSingle :: (Eq a, Show a) => a -> (Parser a) -> String -> Test
+testAssertSingle expect pfun instr = TestCase $ let
+    msg = "\"" ++ show instr ++ "\" should be parsed as \"" ++ show expect ++ "\""
     res = case (parse pfun msg instr) of
         Right a -> a
         Left  a -> error $ "test failed: " ++ msg
@@ -20,48 +23,72 @@ testAssertSingle expect pfun instr msg = TestCase $ let
 
 testParseMetricPrefix :: Test
 testParseMetricPrefix = TestList [
-      testAssertSingle Atto  parseMetricPrefix "a"    "should return Atto"
-    , testAssertSingle Atto  parseMetricPrefix "atto" "should return Atto"
-    , testAssertSingle Atto  parseMetricPrefix "Atto" "should return Atto"
-    , testAssertSingle Femto parseMetricPrefix "f"     "should return Femto"
-    , testAssertSingle Femto parseMetricPrefix "femto" "should return Femto"
-    , testAssertSingle Femto parseMetricPrefix "Femto" "should return Femto"
-    , testAssertSingle Pico parseMetricPrefix "p"    "should return Pico"
-    , testAssertSingle Pico parseMetricPrefix "pico" "should return Pico"
-    , testAssertSingle Pico parseMetricPrefix "Pico" "should return Pico"
-    , testAssertSingle Nano parseMetricPrefix "n"    "should return Nano"
-    , testAssertSingle Nano parseMetricPrefix "nano" "should return Nano"
-    , testAssertSingle Nano parseMetricPrefix "Nano" "should return Nano"
-    , testAssertSingle Micro parseMetricPrefix "u"     "should return Micro"
-    , testAssertSingle Micro parseMetricPrefix "μ"     "should return Micro"
-    , testAssertSingle Micro parseMetricPrefix "mu"    "should return Micro"
-    , testAssertSingle Micro parseMetricPrefix "Mu"    "should return Micro"
-    , testAssertSingle Micro parseMetricPrefix "micro" "should return Micro"
-    , testAssertSingle Micro parseMetricPrefix "Micro" "should return Micro"
-    , testAssertSingle Milli parseMetricPrefix "m"     "should return Milli"
-    , testAssertSingle Milli parseMetricPrefix "milli" "should return Milli"
-    , testAssertSingle Milli parseMetricPrefix "Milli" "should return Milli"
-    , testAssertSingle Kilo parseMetricPrefix "K"    "should return Kilo"
-    , testAssertSingle Kilo parseMetricPrefix "kilo" "should return Kilo"
-    , testAssertSingle Kilo parseMetricPrefix "Kilo" "should return Kilo"
-    , testAssertSingle Mega parseMetricPrefix "M"    "should return Mega"
-    , testAssertSingle Mega parseMetricPrefix "mega" "should return Mega"
-    , testAssertSingle Mega parseMetricPrefix "Mega" "should return Mega"
-    , testAssertSingle Giga parseMetricPrefix "G"    "should return Giga"
-    , testAssertSingle Giga parseMetricPrefix "giga" "should return Giga"
-    , testAssertSingle Giga parseMetricPrefix "Giga" "should return Giga"
-    , testAssertSingle Tera parseMetricPrefix "T"    "should return Tera"
-    , testAssertSingle Tera parseMetricPrefix "tera" "should return Tera"
-    , testAssertSingle Tera parseMetricPrefix "Tera" "should return Tera"
-    , testAssertSingle Peta parseMetricPrefix "P"    "should return Peta"
-    , testAssertSingle Peta parseMetricPrefix "peta" "should return Peta"
-    , testAssertSingle Peta parseMetricPrefix "Peta" "should return Peta"
-    , testAssertSingle Exa parseMetricPrefix "E"   "should return Exa"
-    , testAssertSingle Exa parseMetricPrefix "exa" "should return Exa"
-    , testAssertSingle Exa parseMetricPrefix "Exa" "should return Exa"
+      testAssertSingle Atto parseMetricPrefix "a"
+    , testAssertSingle Atto parseMetricPrefix "atto"
+    , testAssertSingle Atto parseMetricPrefix "Atto"
+    , testAssertSingle Femto parseMetricPrefix "f"
+    , testAssertSingle Femto parseMetricPrefix "femto"
+    , testAssertSingle Femto parseMetricPrefix "Femto"
+    , testAssertSingle Pico parseMetricPrefix "p"
+    , testAssertSingle Pico parseMetricPrefix "pico"
+    , testAssertSingle Pico parseMetricPrefix "Pico"
+    , testAssertSingle Nano parseMetricPrefix "n"
+    , testAssertSingle Nano parseMetricPrefix "nano"
+    , testAssertSingle Nano parseMetricPrefix "Nano"
+    , testAssertSingle Micro parseMetricPrefix "u"
+    , testAssertSingle Micro parseMetricPrefix "μ"
+    , testAssertSingle Micro parseMetricPrefix "mu"
+    , testAssertSingle Micro parseMetricPrefix "Mu"
+    , testAssertSingle Micro parseMetricPrefix "micro"
+    , testAssertSingle Micro parseMetricPrefix "Micro"
+    , testAssertSingle Milli parseMetricPrefix "m"
+    , testAssertSingle Milli parseMetricPrefix "milli"
+    , testAssertSingle Milli parseMetricPrefix "Milli"
+    , testAssertSingle Kilo parseMetricPrefix "K"
+    , testAssertSingle Kilo parseMetricPrefix "kilo"
+    , testAssertSingle Kilo parseMetricPrefix "Kilo"
+    , testAssertSingle Mega parseMetricPrefix "M"
+    , testAssertSingle Mega parseMetricPrefix "mega"
+    , testAssertSingle Mega parseMetricPrefix "Mega"
+    , testAssertSingle Giga parseMetricPrefix "G"
+    , testAssertSingle Giga parseMetricPrefix "giga"
+    , testAssertSingle Giga parseMetricPrefix "Giga"
+    , testAssertSingle Tera parseMetricPrefix "T"
+    , testAssertSingle Tera parseMetricPrefix "tera"
+    , testAssertSingle Tera parseMetricPrefix "Tera"
+    , testAssertSingle Peta parseMetricPrefix "P"
+    , testAssertSingle Peta parseMetricPrefix "peta"
+    , testAssertSingle Peta parseMetricPrefix "Peta"
+    , testAssertSingle Exa parseMetricPrefix "E"
+    , testAssertSingle Exa parseMetricPrefix "exa"
+    , testAssertSingle Exa parseMetricPrefix "Exa"
     ]
 
-main :: IO()
+
+testParseUnit :: Test
+testParseUnit = TestList [
+      testAssertSingle ElectronVolt parseUnit "eV"
+    , testAssertSingle ElectronVolt parseUnit "ElectronVolt"
+    , testAssertSingle CaloriePerMole parseUnit "Ca/mol"
+    , testAssertSingle CaloriePerMole parseUnit "Calorie/mol"
+    , testAssertSingle CaloriePerMole parseUnit "Ca"
+    , testAssertSingle CaloriePerMole parseUnit "Calorie"
+    , testAssertSingle JoulePerMole parseUnit "J/mol"
+    , testAssertSingle JoulePerMole parseUnit "Joule/mol"
+    , testAssertSingle JoulePerMole parseUnit "J"
+    , testAssertSingle JoulePerMole parseUnit "Joule"
+    , testAssertSingle Kelvin parseUnit "K"
+    , testAssertSingle Kelvin parseUnit "Kelvin"
+    , testAssertSingle Wavenumber parseUnit "cm-1"
+    , testAssertSingle Wavenumber parseUnit "Cm-1"
+    , testAssertSingle Meter parseUnit "m"
+    , testAssertSingle Meter parseUnit "Meter"
+    , testAssertSingle Hertz parseUnit "Hertz"
+    , testAssertSingle Hertz parseUnit "Hz"
+    ]
+
+
+main :: IO Counts
 main = do
-    result <- runTestTT testParseMetricPrefix
-    if failures result > 0 then Exit.exitFailure else Exit.exitSuccess
+    runTestTT testParseMetricPrefix
+    runTestTT testParseUnit
