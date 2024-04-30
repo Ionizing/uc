@@ -1,12 +1,11 @@
 module Library
     ( MetricPrefix (..)         -- (..) means exporting all data constructors
     , parseMetricPrefix
-    , parseMetricPrefix'
     , parseDouble
     ) where
 
 import Data.Maybe
-import Text.Parsec (oneOf, many1, digit, char, option)
+import Text.Parsec (oneOf, many1, digit, char, option, string', choice)
 import Text.Parsec.String (Parser)
 import Control.Applicative
 import Control.Monad
@@ -29,28 +28,46 @@ data MetricPrefix =
     deriving (Show, Eq, Ord)
 
 
-
-parseMetricPrefix' :: Char -> MetricPrefix
-parseMetricPrefix' ch = case ch of
-    'a' -> Atto
-    'f' -> Femto
-    'p' -> Pico
-    'n' -> Nano
-    'u' -> Micro
-    'm' -> Milli
-    'K' -> Kilo
-    'M' -> Mega
-    'G' -> Giga
-    'T' -> Tera
-    'P' -> Peta
-    'E' -> Exa
-    x@_ -> error $ "Unexpected Char '" ++ (x:"' for MetricPrefix")
+parseMetricPrefix' :: String -> MetricPrefix
+parseMetricPrefix' s
+    | elem s ["a", "atto", "Atto"]   = Atto
+    | elem s ["f", "femto", "Femto"] = Femto
+    | elem s ["p", "pico", "Pico"]   = Pico
+    | elem s ["n", "nano", "Nano"]   = Nano
+    | elem s ["u", "μ", "mu", "Mu", "micro", "Micro"] = Micro
+    | elem s ["m", "milli", "Milli"] = Milli
+    | elem s ["K", "kilo", "Kilo"]   = Kilo
+    | elem s ["M", "mega", "Mega"]   = Mega
+    | elem s ["G", "giga", "Giga"]   = Giga
+    | elem s ["T", "tera", "Tera"]   = Tera
+    | elem s ["P", "peta", "Peta"]   = Peta
+    | elem s ["E", "exa", "Exa"]     = Exa
+    | otherwise = error $ "Unexpected Char \"" ++ s ++ "\" for MetricPrefix"
 
 
 parseMetricPrefix :: Parser MetricPrefix
 parseMetricPrefix = do
-    ch <- oneOf "afpnumKMGTPE"
-    return $ parseMetricPrefix' ch
+    str <-  choice $ fmap string' [         -- Note that we must use string' instead of string
+        -- full form first
+          "atto", "Atto"
+        , "femto", "Femto"
+        , "pico", "Pico"
+        , "nano", "Nano"
+        , "mu", "Mu", "micro", "Micro"
+        , "milli", "Milli"
+        , "kilo", "Kilo"
+        , "mega", "Mega"
+        , "giga", "Giga"
+        , "tera", "Tera"
+        , "peta", "Peta"
+        , "exa", "Exa"
+        -- then abbreviative
+        , "a", "f", "p"
+        , "n", "u", "μ"
+        , "m", "K", "M"
+        , "G", "T" , "P", "E"
+        ]
+    return $ parseMetricPrefix' str
 
 
 data Units =
