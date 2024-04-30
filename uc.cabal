@@ -97,6 +97,7 @@ test-suite tests
     type:             exitcode-stdio-1.0
     main-is:          LibraryTest.hs
     build-depends:    base                      ^>= 4.19.1.0
+                    , parsec                    ==  3.1.17.0
                     , HUnit                     ^>= 1.6
                     , uc
     hs-source-dirs:   tests

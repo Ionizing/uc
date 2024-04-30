@@ -2,28 +2,36 @@ module Main where
 
 import Library (
     MetricPrefix (..)                       -- (..) means importing all data constructors
-  , parseMetricPrefix'
+  , parseMetricPrefix
     )
 import Test.HUnit
 import qualified System.Exit as Exit
+import Text.Parsec.String
+import Text.Parsec
+
+
+testSingle :: (Eq a, Show a) => a -> (Parser a) -> String -> String -> Test
+testSingle expect pfun instr msg = TestCase $ let
+    res = case (parse pfun msg instr) of
+        Right a -> a
+        Left  a -> error $ "test failed: " ++ msg
+    in res @?= expect
+
 
 testParseMetricPrefix :: Test
 testParseMetricPrefix = TestList [
-      TestLabel "atto"  $ TestCase $ assertEqual "should return Just Atto"  Atto  (parseMetricPrefix' 'a')
-    , TestLabel "femto" $ TestCase $ assertEqual "should return Just Femto" Femto (parseMetricPrefix' 'f')
-    , TestLabel "pico"  $ TestCase $ assertEqual "should return Just Pico"  Pico  (parseMetricPrefix' 'p')
-    , TestLabel "nano"  $ TestCase $ assertEqual "should return Just Nano"  Nano  (parseMetricPrefix' 'n')
-    , TestLabel "micro" $ TestCase $ assertEqual "should return Just Micro" Micro (parseMetricPrefix' 'u')
-    , TestLabel "milli" $ TestCase $ assertEqual "should return Just Milli" Milli (parseMetricPrefix' 'm')
-    , TestLabel "Kilo"  $ TestCase $ assertEqual "should return Just Kilo"  Kilo  (parseMetricPrefix' 'K')
-    , TestLabel "Kilo"  $ TestCase $ assertEqual "should return Just Kilo"  Kilo  (parseMetricPrefix' 'k')
-    , TestLabel "Mega"  $ TestCase $ assertEqual "should return Just Mega"  Mega  (parseMetricPrefix' 'M')
-    , TestLabel "Giga"  $ TestCase $ assertEqual "should return Just Giga"  Giga  (parseMetricPrefix' 'G')
-    , TestLabel "Giga"  $ TestCase $ assertEqual "should return Just Giga"  Giga  (parseMetricPrefix' 'g')
-    , TestLabel "Tera"  $ TestCase $ assertEqual "should return Just Tera"  Tera  (parseMetricPrefix' 'T')
-    , TestLabel "Tera"  $ TestCase $ assertEqual "should return Just Tera"  Tera  (parseMetricPrefix' 't')
-    , TestLabel "Peta"  $ TestCase $ assertEqual "should return Just Peta"  Peta  (parseMetricPrefix' 'P')
-    , TestLabel "Exa"   $ TestCase $ assertEqual "should return Just Exa"   Exa   (parseMetricPrefix' 'E')
+      testSingle Atto  parseMetricPrefix "a" "should return Atto"
+    , testSingle Femto parseMetricPrefix "f" "should return Femto"
+    , testSingle Pico  parseMetricPrefix "p" "should return Pico"
+    , testSingle Nano  parseMetricPrefix "n" "should return Nano"
+    , testSingle Micro parseMetricPrefix "u" "should return Micro"
+    , testSingle Milli parseMetricPrefix "m" "should return Milli"
+    , testSingle Kilo  parseMetricPrefix "K" "should return Kilo"
+    , testSingle Mega  parseMetricPrefix "M" "should return Mega"
+    , testSingle Giga  parseMetricPrefix "G" "should return Giga"
+    , testSingle Tera  parseMetricPrefix "T" "should return Tera"
+    , testSingle Peta  parseMetricPrefix "P" "should return Peta"
+    , testSingle Exa   parseMetricPrefix "E" "should return Exa"
     ]
 
 main :: IO()
