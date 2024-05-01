@@ -9,7 +9,7 @@ module Library
     ) where
 
 import Data.Maybe
-import Text.Parsec (oneOf, many1, digit, char, option, string', choice)
+import Text.Parsec (oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
 import Text.Parsec.String (Parser)
 import Control.Applicative
 import Control.Monad
@@ -144,8 +144,6 @@ parseExponent = do
     s <- parseOptionalSign
     i <- parseIntegral
     return $ (e:s) ++ i
---parseExponent  = pure (:) <*> oneOf "eE" <*> ints
-    --where ints = pure (++) <*> parseOptionalSign <*> parseIntegral
 
 
 parseDouble :: Parser Double
@@ -153,7 +151,7 @@ parseDouble = do
     s <- parseOptionalSign
     i <- parseIntegral
     f <- option "" parseFractional
-    e <- option "" parseExponent
+    e <- try parseExponent <|> return ""
     let floatStr = s ++ i ++ f ++ e
     return (read floatStr :: Double)
 
@@ -166,9 +164,25 @@ data Quantity = Quantity {
     } deriving (Eq, Show)
 
 
-parseQuantity :: Parser Quantity
-parseQuantity = do
+parseQuantityNoPrefix :: Parser Quantity
+parseQuantityNoPrefix = do
     number <- parseDouble
+    spaces
+    unit <- parseUnit
+    eof
+    return Quantity {number = number, prefix = None, unit = unit}
+
+
+parseQuantityWithPrefix :: Parser Quantity
+parseQuantityWithPrefix = do
+    number <- parseDouble
+    spaces
     prefix <- option None parseMetricPrefix
-    unit   <- parseUnit
+    spaces
+    unit <- parseUnit
+    eof
     return Quantity {number = number, prefix = prefix, unit = unit}
+
+
+parseQuantity :: Parser Quantity
+parseQuantity = try parseQuantityNoPrefix <|> try parseQuantityWithPrefix

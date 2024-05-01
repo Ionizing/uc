@@ -5,6 +5,7 @@ import Library (
   , parseMetricPrefix
   , Unit (..)
   , parseUnit
+  , parseDouble
   , Quantity (..)
   , parseQuantity
   )
@@ -16,7 +17,7 @@ import Text.Parsec
 
 testAssertSingle :: (Eq a, Show a) => a -> (Parser a) -> String -> Test
 testAssertSingle expect pfun instr = TestCase $ let
-    msg = "\"" ++ show instr ++ "\" should be parsed as \"" ++ show expect ++ "\""
+    msg = "\"" ++ instr ++ "\" should be parsed as \"" ++ show expect ++ "\""
     res = case (parse pfun msg instr) of
         Right a -> a
         Left  a -> error $ "test failed: " ++ msg ++ ", while the actual result is " ++ show a
@@ -25,74 +26,64 @@ testAssertSingle expect pfun instr = TestCase $ let
 
 testParseMetricPrefix :: Test
 testParseMetricPrefix = TestList [
-      testAssertSingle Atto parseMetricPrefix "a"
-    , testAssertSingle Atto parseMetricPrefix "atto"
-    , testAssertSingle Atto parseMetricPrefix "Atto"
-    , testAssertSingle Femto parseMetricPrefix "f"
-    , testAssertSingle Femto parseMetricPrefix "femto"
-    , testAssertSingle Femto parseMetricPrefix "Femto"
-    , testAssertSingle Pico parseMetricPrefix "p"
-    , testAssertSingle Pico parseMetricPrefix "pico"
-    , testAssertSingle Pico parseMetricPrefix "Pico"
-    , testAssertSingle Nano parseMetricPrefix "n"
-    , testAssertSingle Nano parseMetricPrefix "nano"
-    , testAssertSingle Nano parseMetricPrefix "Nano"
-    , testAssertSingle Micro parseMetricPrefix "u"
-    , testAssertSingle Micro parseMetricPrefix "μ"
-    , testAssertSingle Micro parseMetricPrefix "mu"
-    , testAssertSingle Micro parseMetricPrefix "Mu"
-    , testAssertSingle Micro parseMetricPrefix "micro"
-    , testAssertSingle Micro parseMetricPrefix "Micro"
-    , testAssertSingle Milli parseMetricPrefix "m"
-    , testAssertSingle Milli parseMetricPrefix "milli"
-    , testAssertSingle Milli parseMetricPrefix "Milli"
-    , testAssertSingle Kilo parseMetricPrefix "K"
-    , testAssertSingle Kilo parseMetricPrefix "kilo"
-    , testAssertSingle Kilo parseMetricPrefix "Kilo"
-    , testAssertSingle Mega parseMetricPrefix "M"
-    , testAssertSingle Mega parseMetricPrefix "mega"
-    , testAssertSingle Mega parseMetricPrefix "Mega"
-    , testAssertSingle Giga parseMetricPrefix "G"
-    , testAssertSingle Giga parseMetricPrefix "giga"
-    , testAssertSingle Giga parseMetricPrefix "Giga"
-    , testAssertSingle Tera parseMetricPrefix "T"
-    , testAssertSingle Tera parseMetricPrefix "tera"
-    , testAssertSingle Tera parseMetricPrefix "Tera"
-    , testAssertSingle Peta parseMetricPrefix "P"
-    , testAssertSingle Peta parseMetricPrefix "peta"
-    , testAssertSingle Peta parseMetricPrefix "Peta"
-    , testAssertSingle Exa parseMetricPrefix "E"
-    , testAssertSingle Exa parseMetricPrefix "exa"
-    , testAssertSingle Exa parseMetricPrefix "Exa"
+      TestList [testAssertSingle Atto   parseMetricPrefix str | str <- ["a", "atto", "Atto"]]
+    , TestList [testAssertSingle Femto  parseMetricPrefix str | str <- ["f", "femto", "Femto"]]
+    , TestList [testAssertSingle Pico   parseMetricPrefix str | str <- ["p", "pico", "Pico"]]
+    , TestList [testAssertSingle Nano   parseMetricPrefix str | str <- ["n", "nano", "Nano"]]
+    , TestList [testAssertSingle Micro  parseMetricPrefix str | str <- ["u", "μ", "mu", "Mu", "micro", "Micro"]]
+    , TestList [testAssertSingle Milli  parseMetricPrefix str | str <- ["m", "milli", "Milli"]]
+    , TestList [testAssertSingle Kilo   parseMetricPrefix str | str <- ["K", "Kilo", "kilo"]]
+    , TestList [testAssertSingle Mega   parseMetricPrefix str | str <- ["M", "mega", "Mega"]]
+    , TestList [testAssertSingle Giga   parseMetricPrefix str | str <- ["G", "giga", "Giga"]]
+    , TestList [testAssertSingle Tera   parseMetricPrefix str | str <- ["T", "tera", "Tera"]]
+    , TestList [testAssertSingle Peta   parseMetricPrefix str | str <- ["P", "peta", "Peta"]]
+    , TestList [testAssertSingle Exa    parseMetricPrefix str | str <- ["E", "exa", "Exa"]]
     ]
 
 
 testParseUnit :: Test
 testParseUnit = TestList [
-      testAssertSingle ElectronVolt parseUnit "eV"
-    , testAssertSingle ElectronVolt parseUnit "ElectronVolt"
-    , testAssertSingle CaloriePerMole parseUnit "Ca/mol"
-    , testAssertSingle CaloriePerMole parseUnit "Calorie/mol"
-    , testAssertSingle CaloriePerMole parseUnit "Ca"
-    , testAssertSingle CaloriePerMole parseUnit "Calorie"
-    , testAssertSingle JoulePerMole parseUnit "J/mol"
-    , testAssertSingle JoulePerMole parseUnit "Joule/mol"
-    , testAssertSingle JoulePerMole parseUnit "J"
-    , testAssertSingle JoulePerMole parseUnit "Joule"
-    , testAssertSingle Kelvin parseUnit "K"
-    , testAssertSingle Kelvin parseUnit "Kelvin"
-    , testAssertSingle Wavenumber parseUnit "cm-1"
-    , testAssertSingle Wavenumber parseUnit "Cm-1"
-    , testAssertSingle Meter parseUnit "m"
-    , testAssertSingle Meter parseUnit "Meter"
-    , testAssertSingle Hertz parseUnit "Hertz"
-    , testAssertSingle Hertz parseUnit "Hz"
+      TestList [testAssertSingle ElectronVolt   parseUnit str | str <- ["eV", "ElectronVolt"]]
+    , TestList [testAssertSingle CaloriePerMole parseUnit str | str <- ["Ca/mol", "Calorie/mol", "Ca", "Calorie"]]
+    , TestList [testAssertSingle JoulePerMole   parseUnit str | str <- ["J/mol", "Joule/mol", "J", "Joule"]]
+    , TestList [testAssertSingle Kelvin         parseUnit str | str <- ["K", "Kelvin"]]
+    , TestList [testAssertSingle Wavenumber     parseUnit str | str <- ["cm-1", "Cm-1"]]
+    , TestList [testAssertSingle Meter          parseUnit str | str <- ["m", "Meter"]]
+    , TestList [testAssertSingle Hertz          parseUnit str | str <- ["Hz", "Hertz"]]
+    ]
+
+
+testParseDouble :: Test
+testParseDouble = TestList [
+      TestList [testAssertSingle 114.514 parseDouble str | str <- ["114.514", "114.514E0", "114.514E"]]
+    , testAssertSingle 114514.0 parseDouble "114.514E3"
     ]
 
 
 testParseQuantity :: Test
 testParseQuantity = TestList [
-      testAssertSingle Quantity { number=114.514, prefix=None, unit=ElectronVolt } parseQuantity "114.514eV"
+      TestList [testAssertSingle Quantity { number=114.514, prefix=None, unit=ElectronVolt } parseQuantity str 
+            | str <- ["114.514 eV", "114.514eV", "114.514 ElectronVolt", "114.514ElectronVolt"]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=Exa, unit=ElectronVolt } parseQuantity str 
+            | str <- [ "114.514 EeV", "114.514EeV" , "114.514 E eV", "114.514E eV"
+                     , "114.514EElectronVolt","114.514 EElectronVolt"
+                     , "114.514E ElectronVolt","114.514 E ElectronVolt"
+                     , "1.14514E2EeV"
+                     ]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=Kilo, unit=ElectronVolt } parseQuantity str 
+            | str <- [ "114.514 KeV", "114.514KeV", "114.514KElectronVolt", "114.514 KElectronVolt"
+                     , "114.514 K eV", "114.514K eV", "114.514 K ElectronVolt", "114.514K ElectronVolt"
+                     ]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=None, unit=Meter } parseQuantity str 
+            | str <- ["114.514 m", "114.514m", "114.514 Meter", "114.514Meter"]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=Milli, unit=Meter } parseQuantity str 
+            | str <- [ "114.514 Milli Meter", "114.514 MilliMeter", "114.514MilliMeter", "114.514Milli Meter"
+                     , "114.514mm", "114.514 mm", "114.514m m", "114.514 m m"
+                     ]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=None, unit=Kelvin } parseQuantity str 
+            | str <- ["114.514 K", "114.514K", "114.514 Kelvin", "114.514Kelvin"]]
+    , TestList [testAssertSingle Quantity { number=114.514, prefix=Kilo, unit=Kelvin } parseQuantity str 
+            | str <- ["114.514 K K", "114.514 KK", "114.514K K", "114.514KK"]]
     ]
 
 
@@ -100,4 +91,5 @@ main :: IO Counts
 main = do
     runTestTT testParseMetricPrefix
     runTestTT testParseUnit
+    runTestTT testParseDouble
     runTestTT testParseQuantity
