@@ -5,7 +5,9 @@ import Library (
   , parseMetricPrefix
   , Unit (..)
   , parseUnit
-    )
+  , Quantity (..)
+  , parseQuantity
+  )
 import Test.HUnit
 import qualified System.Exit as Exit
 import Text.Parsec.String
@@ -17,7 +19,7 @@ testAssertSingle expect pfun instr = TestCase $ let
     msg = "\"" ++ show instr ++ "\" should be parsed as \"" ++ show expect ++ "\""
     res = case (parse pfun msg instr) of
         Right a -> a
-        Left  a -> error $ "test failed: " ++ msg
+        Left  a -> error $ "test failed: " ++ msg ++ ", while the actual result is " ++ show a
     in res @?= expect
 
 
@@ -88,7 +90,14 @@ testParseUnit = TestList [
     ]
 
 
+testParseQuantity :: Test
+testParseQuantity = TestList [
+      testAssertSingle Quantity { number=114.514, prefix=None, unit=ElectronVolt } parseQuantity "114.514eV"
+    ]
+
+
 main :: IO Counts
 main = do
     runTestTT testParseMetricPrefix
     runTestTT testParseUnit
+    runTestTT testParseQuantity

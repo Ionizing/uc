@@ -4,6 +4,8 @@ module Library
     , Unit (..)
     , parseUnit
     , parseDouble
+    , Quantity (..)
+    , parseQuantity
     ) where
 
 import Data.Maybe
@@ -154,3 +156,19 @@ parseDouble = do
     e <- option "" parseExponent
     let floatStr = s ++ i ++ f ++ e
     return (read floatStr :: Double)
+
+
+-- Define quantity as Number ++ spaces? ++ MetricPrefix? ++ spaces? ++ Unit
+data Quantity = Quantity {
+      number :: Double
+    , prefix :: MetricPrefix
+    , unit   :: Unit
+    } deriving (Eq, Show)
+
+
+parseQuantity :: Parser Quantity
+parseQuantity = do
+    number <- parseDouble
+    prefix <- option None parseMetricPrefix
+    unit   <- parseUnit
+    return Quantity {number = number, prefix = prefix, unit = unit}
