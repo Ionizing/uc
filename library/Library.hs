@@ -6,16 +6,17 @@ module Library
     , parseDouble
     , Quantity (..)
     , parseQuantity
+    , convertQuantity
     ) where
 
-import Data.Maybe
+import Data.Map.Strict (Map, keys, fromList, fromAscList, (!))
+import Text.Printf
 import Text.Parsec (oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
 import Text.Parsec.String (Parser)
 import Control.Applicative
-import Control.Monad
 
 
--- Metrix prefix parser
+-- Metric prefix parser
 data MetricPrefix =
       Atto        -- 10^-18
     | Femto       -- 10^-15
@@ -31,6 +32,55 @@ data MetricPrefix =
     | Peta        -- 10^15
     | Exa         -- 10^18
     deriving (Show, Eq, Ord)
+
+
+prefixScale :: Map MetricPrefix Double
+prefixScale = fromAscList [
+      (Atto,  1E-18)
+    , (Femto, 1E-15)
+    , (Atto,  1E-18)
+    , (Femto, 1E-15)
+    , (Pico,  1E-12)
+    , (Nano,  1E-9)
+    , (Micro, 1E-6)
+    , (Milli, 1E-3)
+    , (None,  1.0)
+    , (Kilo,  1E3)
+    , (Mega,  1E6)
+    , (Giga,  1E9)
+    , (Tera,  1E12)
+    , (Peta,  1E15)
+    , (Exa,   1E18)
+    ]
+
+
+prefixAbbreviative :: Map MetricPrefix String
+prefixAbbreviative = fromList [
+      (Atto,  "a")
+    , (Femto, "f")
+    , (Pico,  "p")
+    , (Nano,  "n")
+    , (Micro, "μ")
+    , (Milli, "m")
+    , (Kilo,  "K")
+    , (Mega,  "M")
+    , (Giga,  "G")
+    , (Tera,  "T")
+    , (Peta,  "P")
+    , (Exa,   "E")
+    ]
+
+
+instance PrintfArg MetricPrefix where
+    formatArg x fmt |
+        fmtChar (vFmt 'P' fmt) == 'P' =
+            formatString (show x) (fmt {fmtChar='s', fmtPrecision = Nothing})
+    formatArg x fmt |
+        fmtChar (vFmt 'p' fmt) == 'p' =
+            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
+            where
+            str = prefixAbbreviative ! x
+    formatArg _ fmt = errorBadFormat $ fmtChar fmt
 
 
 parseMetricPrefix' :: String -> MetricPrefix
@@ -78,20 +128,60 @@ parseMetricPrefix = do
 -- Unit parser
 data Unit =
       ElectronVolt      -- eV
-    | CaloriePerMole    -- Ca/mol
+    | CaloriePerMole    -- Cal/mol
     | JoulePerMole      -- J/mol
     | Kelvin            -- K
     | Hartree           -- Ha
     | Wavenumber        -- cm-1
     | Meter             -- m
     | Hertz             -- Hz
-    deriving (Show, Eq)
+    deriving (Show, Eq, Ord)
+
+
+unitAbbreviate :: Map Unit String
+unitAbbreviate = fromList [
+      (ElectronVolt,    "eV")
+    , (CaloriePerMole,  "Cal/mol")
+    , (JoulePerMole,    "J/mol")
+    , (Kelvin,          "K")
+    , (Hartree,         "Ha")
+    , (Wavenumber,      "cm-1")
+    , (Meter,           "m")
+    , (Hertz,           "Hz")
+    ]
+
+
+unitFullForm :: Map Unit String
+unitFullForm = fromList [
+      (ElectronVolt,    "ElectronVolt")
+    , (CaloriePerMole,  "Calorie/mol")
+    , (JoulePerMole,    "Joule/mol")
+    , (Kelvin,          "Kelvin")
+    , (Hartree,         "Hartree")
+    , (Wavenumber,      "Cm-1")
+    , (Meter,           "Meter")
+    , (Hertz,           "Hertz")
+    ]
+
+
+instance PrintfArg Unit where
+    formatArg x fmt |
+        fmtChar (vFmt 'U' fmt) == 'U' =
+            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
+            where
+            str = unitFullForm ! x
+    formatArg x fmt |
+        fmtChar (vFmt 'u' fmt) == 'u' =
+            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
+            where
+            str = unitAbbreviate ! x
+    formatArg _ fmt = errorBadFormat $ fmtChar fmt
 
 
 parseUnit' :: String -> Unit
 parseUnit' s
     | elem s ["eV", "ElectronVolt"] = ElectronVolt
-    | elem s ["Ca/mol", "Calorie/mol", "Ca", "Calorie"] = CaloriePerMole
+    | elem s ["Cal/mol", "Calorie/mol", "Cal", "Calorie"] = CaloriePerMole
     | elem s ["J/mol", "Joule/mol", "J", "Joule"] = JoulePerMole
     | elem s ["K", "Kelvin"] = Kelvin
     | elem s ["Ha", "Hartree"] = Hartree
@@ -105,14 +195,14 @@ parseUnit :: Parser Unit
 parseUnit = do
     str <- choice $ fmap string' [
           "ElectronVolt"
-        , "Ca/mol", "Calorie/mol", "Calorie"
+        , "Cal/mol", "Calorie/mol", "Calorie"
         , "J/mol", "Joule/mol", "Joule"
         , "Kelvin"
         , "Hartree", "Hartree"
         , "Cm-1", "cm-1"
         , "Meter"
         , "Hertz"
-        , "eV", "Ca", "J", "K", "m", "Hz"
+        , "eV", "Cal", "J", "K", "m", "Hz"
         ]
     return $ parseUnit' str
 
@@ -191,64 +281,97 @@ parseQuantity = try parseQuantityNoPrefix <|> try parseQuantityWithPrefix
 -- eliminate metricprefix, and convert all the energy to JoulePerMole
 normalizePrefix :: Quantity -> Quantity
 normalizePrefix Quantity {number=number, prefix=prefix, unit=unit} = Quantity {number=number*scale, prefix=None, unit=unit}
-    where
-    scale = case prefix of
-        Atto  -> 1E-18
-        Femto -> 1E-15
-        Pico  -> 1E-12
-        Nano  -> 1E-9
-        Micro -> 1E-6
-        Milli -> 1E-3
-        None  -> 1.0
-        Kilo  -> 1E3
-        Mega  -> 1E6
-        Giga  -> 1E9
-        Tera  -> 1E12
-        Peta  -> 1E15
-        Exa   -> 1E18
+    where scale = prefixScale ! prefix
 
 
 -- conversion ratios
-eVToEv :: Double
-eVToEv = 1.0
+convertRatioEvToOther :: Map Unit Double
+convertRatioEvToOther = fromAscList [
+      (ElectronVolt,   1.0)
+    , (CaloriePerMole, 1.60217733 * 6.0223 * 1E4 / 4184)
+    , (JoulePerMole,   1.60217733 * 6.0223 * 1E4)
+    , (Kelvin,         1.160451812E4)
+    , (Hartree,        1.0 / 27.2114)
+    , (Wavenumber,     8065.73)
+    , (Meter,          1.23984193E-6)
+    , (Hertz,          2.417989242E14)
+    ]
 
-eVToJoulePerMole :: Double
-eVToJoulePerMole = 1.60217733 * 6.0223 * 1E4
 
-eVToCaloriePerMole :: Double
-eVToCaloriePerMole = eVToJoulePerMole / 4184
-
-eVToKelvin :: Double
-eVToKelvin = 1.160451812E4
-
-eVToHartree :: Double
-eVToHartree = 1.0 / 27.2114
-
-eVToWavenumber :: Double
-eVToWavenumber = 8065.73
-
-eVToMeter :: Double
-eVToMeter = 1.23984193E-6
-
-eVToHertz :: Double
-eVToHertz = 2.417989242E14
+convertRatio :: Map (Unit, Unit) Double     -- Unit -> Unit -> Double
+convertRatio = fromList [
+      ((u1, u2), c)
+    | u1 <- keys convertRatioEvToOther
+    , u2 <- keys convertRatioEvToOther
+    , let c = convertRatioEvToOther!u2 / convertRatioEvToOther!u1
+    ]
 
 
 normalizeUnit :: Quantity -> Quantity
-normalizeUnit Quantity {number=number, prefix=None, unit=unit} = Quantity {number=newNumber, prefix=None, unit=ElectronVolt}
+normalizeUnit Quantity {number=number, prefix=None, unit=unit} =
+    Quantity {number=newNumber, prefix=None, unit=ElectronVolt}
     where
     newNumber = case unit of
-        ElectronVolt   -> number * eVToEv
-        CaloriePerMole -> number * eVToCaloriePerMole
-        JoulePerMole   -> number * eVToJoulePerMole
-        Kelvin         -> number * eVToKelvin
-        Hartree        -> number * eVToHartree
-        Wavenumber     -> number * eVToWavenumber
-        Meter          -> eVToMeter / number
-        Hertz          -> number * eVToHertz
-
+        Meter -> (convertRatioEvToOther ! Meter) / number
+        x | elem x [
+              ElectronVolt
+            , CaloriePerMole
+            , JoulePerMole
+            , Kelvin
+            , Hartree
+            , Wavenumber
+            , Hertz
+            ] -> number / (convertRatioEvToOther ! x)
 normalizeUnit _ = error "You should eliminate the MetricPrefix first (via normalizePrefix)"
 
 
 normalizeQuantity :: Quantity -> Quantity
-normalizeQuantity = normalizePrefix . normalizeUnit
+normalizeQuantity = normalizeUnit . normalizePrefix
+-- Now the Quantity should be Quantity {number=number, prefix=None, unit=ElectronVolt}
+
+
+quantityFromElectronVolt :: Unit -> Quantity -> Quantity
+quantityFromElectronVolt newUnit (Quantity {number=number, prefix=None, unit=ElectronVolt}) =
+    Quantity {number=newNumber, prefix=None, unit=newUnit}
+    where
+    newNumber = case newUnit of
+        Meter -> (convertRatioEvToOther ! Meter) / number
+        x | elem x [
+              ElectronVolt
+            , CaloriePerMole
+            , JoulePerMole
+            , Kelvin
+            , Hartree
+            , Wavenumber
+            , Hertz
+            ] -> number * (convertRatioEvToOther ! x)
+
+quantityFromElectronVolt _ Quantity {number=_, prefix=_, unit=_} =
+    error "You should normalize this quantity first (via normalizeQuantity)"
+
+
+addMetricPrefix :: Quantity -> Quantity
+addMetricPrefix Quantity {number=number, prefix=None, unit=unit} =
+    Quantity {number=newNumber, prefix=newPrefix, unit=unit}
+    where
+    (newNumber, newPrefix) = case abs number of
+        x | x < 1E-15 -> (number / 1E-18, Atto)
+        x | x < 1E-12 -> (number / 1E-15, Femto)
+        x | x < 1E-9  -> (number / 1E-12, Pico)
+        x | x < 1E-6  -> (number / 1E-9,  Nano)
+        x | x < 1E-3  -> (number / 1E-6,  Micro)
+        x | x < 1     -> (number / 1E-3,  Milli)
+        x | x < 1E3   -> (number * 1   ,  None)
+        x | x < 1E6   -> (number * 1E-3,  Kilo)
+        x | x < 1E9   -> (number * 1E-6,  Mega)
+        x | x < 1E12  -> (number * 1E-9,  Giga)
+        x | x < 1E15  -> (number * 1E-12, Tera)
+        x | x < 1E18  -> (number * 1E-15, Peta)
+        _             -> (number * 1E-18,  Exa)
+addMetricPrefix Quantity {number=_, prefix=prefix, unit=_} =
+    error "You should eliminate the MetricPrefix first (via normalizePrefix)"
+
+
+convertQuantity :: Unit -> Quantity -> Quantity
+convertQuantity newUnit =
+    addMetricPrefix . (quantityFromElectronVolt newUnit) . normalizeQuantity

@@ -8,6 +8,7 @@ import Library (
   , parseDouble
   , Quantity (..)
   , parseQuantity
+  , convertQuantity
   )
 import Test.HUnit
 import qualified System.Exit as Exit
@@ -44,7 +45,7 @@ testParseMetricPrefix = TestList [
 testParseUnit :: Test
 testParseUnit = TestList [
       TestList [testAssertSingle ElectronVolt   parseUnit str | str <- ["eV", "ElectronVolt"]]
-    , TestList [testAssertSingle CaloriePerMole parseUnit str | str <- ["Ca/mol", "Calorie/mol", "Ca", "Calorie"]]
+    , TestList [testAssertSingle CaloriePerMole parseUnit str | str <- ["Cal/mol", "Calorie/mol", "Cal", "Calorie"]]
     , TestList [testAssertSingle JoulePerMole   parseUnit str | str <- ["J/mol", "Joule/mol", "J", "Joule"]]
     , TestList [testAssertSingle Kelvin         parseUnit str | str <- ["K", "Kelvin"]]
     , TestList [testAssertSingle Wavenumber     parseUnit str | str <- ["cm-1", "Cm-1"]]
@@ -87,9 +88,21 @@ testParseQuantity = TestList [
     ]
 
 
+testConvertQuantity :: Test
+testConvertQuantity = TestList [
+      Quantity { number=1.32887978799368,   prefix=Mega, unit=Kelvin } ~=? convertQuantity Kelvin Quantity { number=114.514, prefix=None, unit=ElectronVolt }
+    , Quantity { number=10.826989975024887, prefix=Nano, unit=Meter  } ~=? convertQuantity Meter  Quantity { number=114.514, prefix=None, unit=ElectronVolt }
+    , Quantity { number=114.514, prefix=None, unit=ElectronVolt } ~=? convertQuantity ElectronVolt Quantity { number=1.32887978799368,   prefix=Mega, unit=Kelvin }
+    , Quantity { number=114.514, prefix=None, unit=ElectronVolt } ~=? convertQuantity ElectronVolt Quantity { number=10.826989975024887, prefix=Nano, unit=Meter  }
+    , Quantity { number=119.62977558093239, prefix=Micro, unit=Meter } ~=? convertQuantity Meter Quantity { number=1.0, prefix=Kilo, unit=JoulePerMole  }
+    , Quantity { number=1.0, prefix=Kilo, unit=JoulePerMole  } ~=? convertQuantity JoulePerMole Quantity { number=119.62977558093239, prefix=Micro, unit=Meter }
+    ]
+
+
 main :: IO Counts
 main = do
     runTestTT testParseMetricPrefix
     runTestTT testParseUnit
     runTestTT testParseDouble
     runTestTT testParseQuantity
+    runTestTT testConvertQuantity
