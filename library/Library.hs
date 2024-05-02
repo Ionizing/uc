@@ -5,6 +5,7 @@ module Library
     , parseUnit
     , parseDouble
     , Quantity (..)
+    , quantity
     , parseQuantity
     , convertQuantity
     ) where
@@ -54,6 +55,24 @@ prefixScale = fromAscList [
     ]
 
 
+prefixFullForm :: Map MetricPrefix String
+prefixFullForm = fromList [
+      (Atto,  "Atto")
+    , (Femto, "Femto")
+    , (Pico,  "Pico")
+    , (Nano,  "Nano")
+    , (Micro, "Micro")
+    , (Milli, "Milli")
+    , (None,  "")
+    , (Kilo,  "Kilo")
+    , (Mega,  "Mega")
+    , (Giga,  "Giga")
+    , (Tera,  "Tera")
+    , (Peta,  "Peta")
+    , (Exa,   "Exa")
+    ]
+
+
 prefixAbbreviative :: Map MetricPrefix String
 prefixAbbreviative = fromList [
       (Atto,  "a")
@@ -62,6 +81,7 @@ prefixAbbreviative = fromList [
     , (Nano,  "n")
     , (Micro, "μ")
     , (Milli, "m")
+    , (None,  "")
     , (Kilo,  "K")
     , (Mega,  "M")
     , (Giga,  "G")
@@ -72,15 +92,14 @@ prefixAbbreviative = fromList [
 
 
 instance PrintfArg MetricPrefix where
-    formatArg x fmt |
-        fmtChar (vFmt 'P' fmt) == 'P' =
-            formatString (show x) (fmt {fmtChar='s', fmtPrecision = Nothing})
-    formatArg x fmt |
-        fmtChar (vFmt 'p' fmt) == 'p' =
-            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
+    formatArg x fmt
+        | fmtChar (vFmt 'P' fmt) == 'P' = formatString strFull strFmt
+        | fmtChar (vFmt 'p' fmt) == 'p' = formatString strAbbr strFmt
+        | otherwise = errorBadFormat $ fmtChar fmt
             where
-            str = prefixAbbreviative ! x
-    formatArg _ fmt = errorBadFormat $ fmtChar fmt
+            strFull = prefixFullForm ! x
+            strAbbr = prefixAbbreviative ! x
+            strFmt  = fmt {fmtChar='s', fmtPrecision = Nothing}
 
 
 parseMetricPrefix' :: String -> MetricPrefix
@@ -165,17 +184,14 @@ unitFullForm = fromList [
 
 
 instance PrintfArg Unit where
-    formatArg x fmt |
-        fmtChar (vFmt 'U' fmt) == 'U' =
-            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
+    formatArg x fmt
+        | fmtChar (vFmt 'U' fmt) == 'U' = formatString strFull strFmt
+        | fmtChar (vFmt 'u' fmt) == 'u' = formatString strAbbr strFmt
+        | otherwise = errorBadFormat $ fmtChar fmt
             where
-            str = unitFullForm ! x
-    formatArg x fmt |
-        fmtChar (vFmt 'u' fmt) == 'u' =
-            formatString str (fmt {fmtChar='s', fmtPrecision = Nothing})
-            where
-            str = unitAbbreviate ! x
-    formatArg _ fmt = errorBadFormat $ fmtChar fmt
+            strFull = unitFullForm ! x
+            strAbbr = unitAbbreviate ! x
+            strFmt  = fmt {fmtChar='s', fmtPrecision = Nothing}
 
 
 parseUnit' :: String -> Unit
@@ -252,6 +268,30 @@ data Quantity = Quantity {
     , prefix :: MetricPrefix
     , unit   :: Unit
     } deriving (Eq, Show)
+
+
+quantity :: Double -> MetricPrefix -> Unit -> Quantity
+quantity number prefix unit = Quantity {number=number, prefix=prefix, unit=unit}
+
+
+instance PrintfArg Quantity where
+    formatArg Quantity {number=number, prefix=prefix, unit=unit} fmt
+        | fmtChar (vFmt 'Q' fmt) == 'Q' = formatString strFull strFmt
+        | fmtChar (vFmt 'q' fmt) == 'q' = formatString strAbbr strFmt
+        | otherwise = errorBadFormat $ fmtChar fmt
+            where
+            strFmt = fmt {fmtChar='s', fmtPrecision=Nothing, fmtWidth=Nothing}
+            strFull = numberFull ++ prefixFull ++ unitFull
+                where
+                numberFull  = formatRealFloat number fmt {fmtChar='f'} " "
+                prefixFull' = formatArg prefix strFmt {fmtChar='P'} ""
+                prefixFull  = if prefixFull' == "" then "" else prefixFull' ++ " "
+                unitFull    = formatArg unit   strFmt {fmtChar='U'} ""
+            strAbbr = numberAbbr ++ prefixAbbr ++ unitAbbr
+                where
+                numberAbbr = formatRealFloat number fmt {fmtChar='f'} " "
+                prefixAbbr = formatArg prefix strFmt {fmtChar='p'} ""
+                unitAbbr   = formatArg unit   strFmt {fmtChar='u'} ""
 
 
 parseQuantityNoPrefix :: Parser Quantity
