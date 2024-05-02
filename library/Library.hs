@@ -186,3 +186,69 @@ parseQuantityWithPrefix = do
 
 parseQuantity :: Parser Quantity
 parseQuantity = try parseQuantityNoPrefix <|> try parseQuantityWithPrefix
+
+
+-- eliminate metricprefix, and convert all the energy to JoulePerMole
+normalizePrefix :: Quantity -> Quantity
+normalizePrefix Quantity {number=number, prefix=prefix, unit=unit} = Quantity {number=number*scale, prefix=None, unit=unit}
+    where
+    scale = case prefix of
+        Atto  -> 1E-18
+        Femto -> 1E-15
+        Pico  -> 1E-12
+        Nano  -> 1E-9
+        Micro -> 1E-6
+        Milli -> 1E-3
+        None  -> 1.0
+        Kilo  -> 1E3
+        Mega  -> 1E6
+        Giga  -> 1E9
+        Tera  -> 1E12
+        Peta  -> 1E15
+        Exa   -> 1E18
+
+
+-- conversion ratios
+eVToEv :: Double
+eVToEv = 1.0
+
+eVToJoulePerMole :: Double
+eVToJoulePerMole = 1.60217733 * 6.0223 * 1E4
+
+eVToCaloriePerMole :: Double
+eVToCaloriePerMole = eVToJoulePerMole / 4184
+
+eVToKelvin :: Double
+eVToKelvin = 1.160451812E4
+
+eVToHartree :: Double
+eVToHartree = 1.0 / 27.2114
+
+eVToWavenumber :: Double
+eVToWavenumber = 8065.73
+
+eVToMeter :: Double
+eVToMeter = 1.23984193E-6
+
+eVToHertz :: Double
+eVToHertz = 2.417989242E14
+
+
+normalizeUnit :: Quantity -> Quantity
+normalizeUnit Quantity {number=number, prefix=None, unit=unit} = Quantity {number=newNumber, prefix=None, unit=ElectronVolt}
+    where
+    newNumber = case unit of
+        ElectronVolt   -> number * eVToEv
+        CaloriePerMole -> number * eVToCaloriePerMole
+        JoulePerMole   -> number * eVToJoulePerMole
+        Kelvin         -> number * eVToKelvin
+        Hartree        -> number * eVToHartree
+        Wavenumber     -> number * eVToWavenumber
+        Meter          -> eVToMeter / number
+        Hertz          -> number * eVToHertz
+
+normalizeUnit _ = error "You should eliminate the MetricPrefix first (via normalizePrefix)"
+
+
+normalizeQuantity :: Quantity -> Quantity
+normalizeQuantity = normalizePrefix . normalizeUnit

@@ -1,7 +1,8 @@
 module Main where
 
+import Text.Parsec
 import Library
 
 main :: IO ()
 main = do
-    putStrLn $ show $ parseMetricPrefix' 'k'
+    parseTest parseQuantity "114.514nm"
