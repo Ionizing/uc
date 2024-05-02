@@ -276,22 +276,24 @@ quantity number prefix unit = Quantity {number=number, prefix=prefix, unit=unit}
 
 instance PrintfArg Quantity where
     formatArg Quantity {number=number, prefix=prefix, unit=unit} fmt
-        | fmtChar (vFmt 'Q' fmt) == 'Q' = formatString strFull strFmt
-        | fmtChar (vFmt 'q' fmt) == 'q' = formatString strAbbr strFmt
+        | fmtChar (vFmt 'Q' fmt) == 'Q' = showsFull
+        | fmtChar (vFmt 'q' fmt) == 'q' = showsAbbr
         | otherwise = errorBadFormat $ fmtChar fmt
             where
             strFmt = fmt {fmtChar='s', fmtPrecision=Nothing, fmtWidth=Nothing}
-            strFull = numberFull ++ prefixFull ++ unitFull
+            showsFull = numberFull . prefixFull . unitFull
                 where
-                numberFull  = formatRealFloat number fmt {fmtChar='f'} " "
-                prefixFull' = formatArg prefix strFmt {fmtChar='P'} ""
-                prefixFull  = if prefixFull' == "" then "" else prefixFull' ++ " "
-                unitFull    = formatArg unit   strFmt {fmtChar='U'} ""
-            strAbbr = numberAbbr ++ prefixAbbr ++ unitAbbr
+                numberFull = formatRealFloat number fmt {fmtChar='f'} . (" " ++)
+                prefixFull' = formatArg prefix strFmt {fmtChar='P'}
+                prefixFull = if prefix == None
+                    then prefixFull' . (" " ++)
+                    else prefixFull' . (" " ++)
+                unitFull   = formatArg unit   strFmt {fmtChar='U'}
+            showsAbbr = numberAbbr . prefixAbbr . unitAbbr
                 where
-                numberAbbr = formatRealFloat number fmt {fmtChar='f'} " "
-                prefixAbbr = formatArg prefix strFmt {fmtChar='p'} ""
-                unitAbbr   = formatArg unit   strFmt {fmtChar='u'} ""
+                numberAbbr = formatRealFloat number fmt {fmtChar='f'} . (" " ++)
+                prefixAbbr = formatArg prefix strFmt {fmtChar='p'}
+                unitAbbr   = formatArg unit   strFmt {fmtChar='u'}
 
 
 parseQuantityNoPrefix :: Parser Quantity
