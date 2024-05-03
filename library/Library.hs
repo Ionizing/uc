@@ -7,12 +7,12 @@ module Library
     , Quantity (..)
     , quantity
     , parseQuantity
-    , quantityFromString
     , convertQuantity
     ) where
 
 import Data.Map.Strict (Map, keys, fromList, fromAscList, (!))
 import Text.Printf
+import Text.Read (Read)
 import Text.Parsec (parse, oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
 import Text.Parsec.String (Parser)
 import Control.Applicative
@@ -215,7 +215,7 @@ parseUnit = do
         , "Cal/mol", "Calorie/mol", "Calorie"
         , "J/mol", "Joule/mol", "Joule"
         , "Kelvin"
-        , "Hartree", "Hartree"
+        , "Ha", "Hartree"
         , "Cm-1", "cm-1"
         , "Meter"
         , "Hertz"
@@ -321,13 +321,14 @@ parseQuantity :: Parser Quantity
 parseQuantity = try parseQuantityNoPrefix <|> try parseQuantityWithPrefix
 
 
-quantityFromString :: String -> Quantity
-quantityFromString str =
-    case ret of
-    Left  a -> error $ show a
-    Right q -> q
-    where
-    ret = parse parseQuantity ("Invalid quantity encountered: '" ++ str ++ "'") str
+instance Read Quantity where
+    readsPrec _ str = [(parseRet, "")]
+        where
+        parseRet = case ret of
+            Left  a -> error $ show a
+            Right q -> q
+            where
+            ret = parse parseQuantity ("Invalid quantity encountered: '" ++ str ++ "'") str
 
 
 -- eliminate metricprefix, and convert all the energy to JoulePerMole
