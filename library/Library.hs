@@ -7,12 +7,13 @@ module Library
     , Quantity (..)
     , quantity
     , parseQuantity
+    , quantityFromString
     , convertQuantity
     ) where
 
 import Data.Map.Strict (Map, keys, fromList, fromAscList, (!))
 import Text.Printf
-import Text.Parsec (oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
+import Text.Parsec (parse, oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
 import Text.Parsec.String (Parser)
 import Control.Applicative
 
@@ -286,7 +287,7 @@ instance PrintfArg Quantity where
                 numberFull = formatRealFloat number fmt {fmtChar='f'} . (" " ++)
                 prefixFull' = formatArg prefix strFmt {fmtChar='P'}
                 prefixFull = if prefix == None
-                    then prefixFull' . (" " ++)
+                    then prefixFull'
                     else prefixFull' . (" " ++)
                 unitFull   = formatArg unit   strFmt {fmtChar='U'}
             showsAbbr = numberAbbr . prefixAbbr . unitAbbr
@@ -318,6 +319,15 @@ parseQuantityWithPrefix = do
 
 parseQuantity :: Parser Quantity
 parseQuantity = try parseQuantityNoPrefix <|> try parseQuantityWithPrefix
+
+
+quantityFromString :: String -> Quantity
+quantityFromString str =
+    case ret of
+    Left  a -> error $ show a
+    Right q -> q
+    where
+    ret = parse parseQuantity ("Invalid quantity encountered: '" ++ str ++ "'") str
 
 
 -- eliminate metricprefix, and convert all the energy to JoulePerMole
