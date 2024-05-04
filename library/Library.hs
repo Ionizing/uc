@@ -8,12 +8,12 @@ module Library
     , quantity
     , parseQuantity
     , convertQuantity
+    , convertRatio
     ) where
 
 import Data.Map.Strict (Map, keys, fromList, fromAscList, (!))
 import Data.Maybe
 import Text.Printf
-import Text.Read (Read)
 import Text.Parsec (parse, oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
 import Text.Parsec.String (Parser)
 import Control.Applicative
@@ -273,11 +273,11 @@ data Quantity = Quantity {
 
 
 quantity :: Double -> MetricPrefix -> Unit -> Quantity
-quantity number prefix unit = Quantity {number=number, prefix=prefix, unit=unit}
+quantity _number _prefix _unit = Quantity {number=_number, prefix=_prefix, unit=_unit}
 
 
 instance PrintfArg Quantity where
-    formatArg Quantity {number=number, prefix=prefix, unit=unit} fmt
+    formatArg Quantity {number=_number, prefix=_prefix, unit=_unit} fmt
         | fmtCharIsQ || fmtCharIsq = formatString strTotal strFmt
         | otherwise = errorBadFormat $ fmtChar fmt
             where
@@ -293,37 +293,37 @@ instance PrintfArg Quantity where
 
             strTotal = numStr ++ delim1 ++ preStr ++ delim2 ++ unitStr
                 where
-                numStr = formatRealFloat number numFmt ""
+                numStr = formatRealFloat _number numFmt ""
 
                 delim1  = if isAlternate then " " else ""
-                preStr  = formatArg prefix preFmt ""
+                preStr  = formatArg _prefix preFmt ""
                 preFmt  = if fmtCharIsQ then blankFmt {fmtChar='P'} else blankFmt {fmtChar='p'}
 
                 delim2 | not isAlternate && null preStr = " "
                        | fmtCharIsQ && not (null preStr) = " "
                        | otherwise = ""
-                unitStr = if isAlternate then formatArg unit unitFmt "" else ""
+                unitStr = if isAlternate then formatArg _unit unitFmt "" else ""
                 unitFmt = if fmtCharIsQ then blankFmt {fmtChar='U'} else blankFmt {fmtChar='u'}
 
 
 parseQuantityNoPrefix :: Parser Quantity
 parseQuantityNoPrefix = do
-    number <- parseDouble
+    _number <- parseDouble
     spaces
-    unit <- parseUnit
+    _unit <- parseUnit
     eof
-    return Quantity {number = number, prefix = None, unit = unit}
+    return $ quantity _number None _unit
 
 
 parseQuantityWithPrefix :: Parser Quantity
 parseQuantityWithPrefix = do
-    number <- parseDouble
+    _number <- parseDouble
     spaces
-    prefix <- option None parseMetricPrefix
+    _prefix <- option None parseMetricPrefix
     spaces
-    unit <- parseUnit
+    _unit <- parseUnit
     eof
-    return Quantity {number = number, prefix = prefix, unit = unit}
+    return $ quantity _number _prefix _unit
 
 
 parseQuantity :: Parser Quantity
@@ -342,8 +342,8 @@ instance Read Quantity where
 
 -- eliminate metricprefix, and convert all the energy to JoulePerMole
 normalizePrefix :: Quantity -> Quantity
-normalizePrefix Quantity {number=number, prefix=prefix, unit=unit} = Quantity {number=number*scale, prefix=None, unit=unit}
-    where scale = prefixScale ! prefix
+normalizePrefix Quantity {number=_number, prefix=_prefix, unit=_unit} = Quantity {number=_number*scale, prefix=None, unit=_unit}
+    where scale = prefixScale ! _prefix
 
 
 -- conversion ratios
@@ -370,11 +370,11 @@ convertRatio = fromList [
 
 
 normalizeUnit :: Quantity -> Quantity
-normalizeUnit Quantity {number=number, prefix=None, unit=unit} =
+normalizeUnit Quantity {number=_number, prefix=None, unit=_unit} =
     Quantity {number=newNumber, prefix=None, unit=ElectronVolt}
     where
-    newNumber = case unit of
-        Meter -> (convertRatioEvToOther ! Meter) / number
+    newNumber = case _unit of
+        Meter -> (convertRatioEvToOther ! Meter) / _number
         x | elem x [
               ElectronVolt
             , CaloriePerMole
@@ -383,7 +383,8 @@ normalizeUnit Quantity {number=number, prefix=None, unit=unit} =
             , Hartree
             , Wavenumber
             , Hertz
-            ] -> number / (convertRatioEvToOther ! x)
+            ] -> _number / (convertRatioEvToOther ! x)
+        _ -> error "Unreachable"
 normalizeUnit _ = error "You should eliminate the MetricPrefix first (via normalizePrefix)"
 
 
@@ -393,11 +394,11 @@ normalizeQuantity = normalizeUnit . normalizePrefix
 
 
 quantityFromElectronVolt :: Unit -> Quantity -> Quantity
-quantityFromElectronVolt newUnit (Quantity {number=number, prefix=None, unit=ElectronVolt}) =
+quantityFromElectronVolt newUnit (Quantity {number=_number, prefix=None, unit=ElectronVolt}) =
     Quantity {number=newNumber, prefix=None, unit=newUnit}
     where
     newNumber = case newUnit of
-        Meter -> (convertRatioEvToOther ! Meter) / number
+        Meter -> (convertRatioEvToOther ! Meter) / _number
         x | elem x [
               ElectronVolt
             , CaloriePerMole
@@ -406,31 +407,32 @@ quantityFromElectronVolt newUnit (Quantity {number=number, prefix=None, unit=Ele
             , Hartree
             , Wavenumber
             , Hertz
-            ] -> number * (convertRatioEvToOther ! x)
+            ] -> _number * (convertRatioEvToOther ! x)
+        _ -> error "Unreachable"
 
 quantityFromElectronVolt _ Quantity {number=_, prefix=_, unit=_} =
     error "You should normalize this quantity first (via normalizeQuantity)"
 
 
 addMetricPrefix :: Quantity -> Quantity
-addMetricPrefix Quantity {number=number, prefix=None, unit=unit} =
-    Quantity {number=newNumber, prefix=newPrefix, unit=unit}
+addMetricPrefix Quantity {number=_number, prefix=None, unit=_unit} =
+    Quantity {number=newNumber, prefix=newPrefix, unit=_unit}
     where
-    (newNumber, newPrefix) = case abs number of
-        x | x < 1E-15 -> (number / 1E-18, Atto)
-        x | x < 1E-12 -> (number / 1E-15, Femto)
-        x | x < 1E-9  -> (number / 1E-12, Pico)
-        x | x < 1E-6  -> (number / 1E-9,  Nano)
-        x | x < 1E-3  -> (number / 1E-6,  Micro)
-        x | x < 1     -> (number / 1E-3,  Milli)
-        x | x < 1E3   -> (number * 1   ,  None)
-        x | x < 1E6   -> (number * 1E-3,  Kilo)
-        x | x < 1E9   -> (number * 1E-6,  Mega)
-        x | x < 1E12  -> (number * 1E-9,  Giga)
-        x | x < 1E15  -> (number * 1E-12, Tera)
-        x | x < 1E18  -> (number * 1E-15, Peta)
-        _             -> (number * 1E-18,  Exa)
-addMetricPrefix Quantity {number=_, prefix=prefix, unit=_} =
+    (newNumber, newPrefix) = case abs _number of
+        x | x < 1E-15 -> (_number / 1E-18, Atto)
+        x | x < 1E-12 -> (_number / 1E-15, Femto)
+        x | x < 1E-9  -> (_number / 1E-12, Pico)
+        x | x < 1E-6  -> (_number / 1E-9,  Nano)
+        x | x < 1E-3  -> (_number / 1E-6,  Micro)
+        x | x < 1     -> (_number / 1E-3,  Milli)
+        x | x < 1E3   -> (_number * 1   ,  None)
+        x | x < 1E6   -> (_number * 1E-3,  Kilo)
+        x | x < 1E9   -> (_number * 1E-6,  Mega)
+        x | x < 1E12  -> (_number * 1E-9,  Giga)
+        x | x < 1E15  -> (_number * 1E-12, Tera)
+        x | x < 1E18  -> (_number * 1E-15, Peta)
+        _             -> (_number * 1E-18,  Exa)
+addMetricPrefix _ =
     error "You should eliminate the MetricPrefix first (via normalizePrefix)"
 
 

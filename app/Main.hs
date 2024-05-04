@@ -33,7 +33,7 @@ app = App
         metavar "QUANTITIES" <> help "E.g. '1.0eV', '20THz' and '3.14Kcm-1'..."
     ))
     <*> option str (
-        metavar "FORMAT" <> long "fmt" <> short 'f' <> value "%#8.3q"
+        metavar "FORMAT" <> long "fmt" <> short 'f' <> value "%12.3q"
     <>  help "Format the output. Strings like '%10.5q' and '%10.5q' are available."
     )
 
