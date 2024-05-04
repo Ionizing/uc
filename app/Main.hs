@@ -12,8 +12,8 @@ data App = App [Quantity]
 app :: Parser App
 app = App
     <$> some (argument auto (
-        metavar "INPUT"
-     <> help "Input quantity. e.g. '1.0eV', '20THz' and '3.14Kcm-1'"
+        metavar "QUANTITIES"
+     <> help "E.g. '1.0eV', '20THz' and '3.14Kcm-1'..."
     ))
 
 
@@ -30,6 +30,13 @@ main = run =<< execParser opts
     where
     opts = info (app <**> helper <**> simpleVersioner "v0.0.1")
         ( fullDesc
-        <> progDesc "Unit conversion toy for quantum chemistry researchers."
-        <> footer "This is the footer"
+        <> header "Unit conversion toy for quantum chemistry researchers."
+        <> footer (
+            "Available units: 'eV Cal/mol J/mol K(Kelvin) Ha(Hartree) cm-1 m(meter) Hz'."
+        ++  " Prefixes from 'a(Atto)' to 'E(Exa)' are also available."
+        ++  " In order to eliminate the confusions,"
+        ++  " the prefixes smaller than unity (from 'a(Atto)' to 'm(Milli-)') should be lowercased,"
+        ++  " while the larger prefixes (from 'K(Kilo)' to 'E(Exa)') should be uppercased."
+        ++  " For example: '1meV' means '1 Milli ElectronVolt' while '1MeV' stands for '1 Mega ElectronVolt'"
+        )
         )
