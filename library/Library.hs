@@ -11,6 +11,7 @@ module Library
     ) where
 
 import Data.Map.Strict (Map, keys, fromList, fromAscList, (!))
+import Data.Maybe
 import Text.Printf
 import Text.Read (Read)
 import Text.Parsec (parse, oneOf, many1, digit, char, option, string', choice, spaces, try, eof)
@@ -280,13 +281,14 @@ instance PrintfArg Quantity where
         | fmtCharIsQ || fmtCharIsq = formatString strTotal strFmt
         | otherwise = errorBadFormat $ fmtChar fmt
             where
-            fmtCharIsQ = fmtChar (vFmt 'Q' fmt) == 'Q'
-            fmtCharIsq = fmtChar (vFmt 'q' fmt) == 'q'
-            isAlternate = fmtAlternate fmt              -- Disable unit by default
+            width       = fromMaybe 12 $ fmtWidth fmt
+            fmtCharIsQ  = fmtChar (vFmt 'Q' fmt) == 'Q'
+            fmtCharIsq  = fmtChar (vFmt 'q' fmt) == 'q'
+            isAlternate = fmtAlternate fmt && fmtCharIsq     -- Disable unit by default
 
             blankFmt = fmt {fmtChar='s', fmtWidth=Nothing, fmtPrecision=Nothing}
 
-            strFmt = fmt {fmtChar='s', fmtPrecision=Nothing} -- width used here
+            strFmt = fmt {fmtChar='s', fmtWidth=Just width, fmtPrecision=Nothing} -- width used here
             numFmt = fmt {fmtChar='f', fmtWidth=Nothing} -- precision used here
 
             strTotal = numStr ++ delim1 ++ preStr ++ delim2 ++ unitStr

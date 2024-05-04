@@ -1,10 +1,14 @@
+{-# LANGUAGE DerivingVia #-}
+
 module Main where
 
 import Data.List (intercalate)
+import Data.Maybe
 import Text.Printf (
       printf
     , PrintfArg
     , formatArg
+    , fmtAlternate
     , fmtChar
     , fmtWidth
     , fmtPrecision
@@ -14,8 +18,14 @@ import Options.Applicative
 import Library
 
 
-data App = App [Quantity] String
-    deriving (Eq, Show)
+newtype Input = Input Quantity
+    deriving (Read) via Quantity
+
+instance PrintfArg Input where
+    formatArg (Input q) fmt = formatArg q fmt {fmtAlternate=True}
+
+
+data App = App [Input] String
 
 app :: Parser App
 app = App
@@ -32,12 +42,14 @@ data Header = Header
 instance PrintfArg Header where
     formatArg _ fmt = formatString totStr totFmt
         where
+        width  = fromMaybe 12 $ fmtWidth fmt
         totFmt = fmt {fmtChar='s', fmtWidth=Nothing, fmtPrecision=Nothing}
-        strFmt = fmt {fmtChar='s', fmtPrecision=Nothing}
+        strFmt = fmt {fmtChar='s', fmtWidth=Just width, fmtPrecision=Nothing}
         colStr s = formatString s strFmt ""
-        totStr = first ++ other
-        first  = colStr "INPUT" ++ " | "
-        other  = intercalate " | " $ map colStr [
+        totStr = inputCell ++ convertedCell ++ "\n" ++ secondLine
+        secondLine = intercalate " | " $ replicate 9 $ replicate width '-'
+        inputCell  = colStr "INPUT" ++ " | "
+        convertedCell  = intercalate " | " $ map colStr [
               "ElectronVolt"
             , "Calorie/mol"
             , "Joule/mol"
@@ -49,10 +61,10 @@ instance PrintfArg Header where
             ]
 
 
-formatQuantities :: String -> Quantity -> String
-formatQuantities fmt q = originalStr ++ " = " ++ formattedStr
+formatQuantities :: String -> Input -> String
+formatQuantities fmt input@(Input q) = originalStr ++ " = " ++ formattedStr
     where
-    originalStr  = printf fmt q
+    originalStr  = printf fmt input
     formattedStr = intercalate " | " $ map (printf fmt) converted
     converted    = map convertQuantity [
           ElectronVolt
