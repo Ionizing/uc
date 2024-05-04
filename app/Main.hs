@@ -1,7 +1,15 @@
 module Main where
 
 import Data.List (intercalate)
-import Text.Printf (printf)
+import Text.Printf (
+      printf
+    , PrintfArg
+    , formatArg
+    , fmtChar
+    , fmtWidth
+    , fmtPrecision
+    , formatString
+    )
 import Options.Applicative
 import Library
 
@@ -15,13 +23,34 @@ app = App
         metavar "QUANTITIES" <> help "E.g. '1.0eV', '20THz' and '3.14Kcm-1'..."
     ))
     <*> option str (
-        metavar "FORMAT" <> long "fmt" <> short 'f' <> value "%10.5q"
+        metavar "FORMAT" <> long "fmt" <> short 'f' <> value "%#8.3q"
     <>  help "Format the output. Strings like '%10.5q' and '%10.5q' are available."
     )
 
 
+data Header = Header
+instance PrintfArg Header where
+    formatArg _ fmt = formatString totStr totFmt
+        where
+        totFmt = fmt {fmtChar='s', fmtWidth=Nothing, fmtPrecision=Nothing}
+        strFmt = fmt {fmtChar='s', fmtPrecision=Nothing}
+        colStr s = formatString s strFmt ""
+        totStr = first ++ other
+        first  = colStr "INPUT" ++ " | "
+        other  = intercalate " | " $ map colStr [
+              "ElectronVolt"
+            , "Calorie/mol"
+            , "Joule/mol"
+            , "Temperature"
+            , "Hartree"
+            , "Wavenumber"
+            , "Wavelength"
+            , "Frequency"
+            ]
+
+
 formatQuantities :: String -> Quantity -> String
-formatQuantities fmt q = originalStr ++ "  == " ++ formattedStr
+formatQuantities fmt q = originalStr ++ " = " ++ formattedStr
     where
     originalStr  = printf fmt q
     formattedStr = intercalate " | " $ map (printf fmt) converted
@@ -38,14 +67,13 @@ formatQuantities fmt q = originalStr ++ "  == " ++ formattedStr
 
 
 run :: App -> IO ()
-run (App xs fmt) = putStrLn $ intercalate "\n" $ map (formatQuantities fmt) xs
+run (App xs fmt) = putStrLn $ headerStr ++ "\n" ++ bodyStr
+    where
+    headerStr = printf fmt Header :: String
+    bodyStr   = intercalate "\n" $ map (formatQuantities fmt) xs
 
 
 main :: IO ()
---main = do
-    --parseTest parseQuantity "114.514nm"
-    --printf "[%Q]\n" Quantity {unit=Meter, prefix=Nano, number=11.4514}
-    --printf "[%q]\n" Quantity {unit=Meter, prefix=Nano, number=11.4514}
 main = run =<< execParser opts
     where
     opts = info (app <**> helper <**> simpleVersioner "v0.0.1")
@@ -55,8 +83,8 @@ main = run =<< execParser opts
             "Available units: 'eV Cal/mol J/mol K(Kelvin) Ha(Hartree) cm-1 m(meter) Hz'."
         ++  " Prefixes from 'a'(Atto) to 'E'(Exa) are also available."
         ++  " In order to eliminate the confusions,"
-        ++  " the prefixes smaller than unity (from 'a'(Atto) to 'm'(Milli)) should be lowercased,"
-        ++  " while the larger prefixes (from 'K'(Kilo) to 'E'(Exa)) should be uppercased."
+        ++  " the prefixes smaller than unity (from 'a'(Atto,10^-18) to 'm'(Milli,10^-3)) should be lowercased,"
+        ++  " while the larger prefixes (from 'K'(Kilo,10^3) to 'E'(Exa,10^18)) should be uppercased."
         ++  " For example: '1meV' means '1 Milli ElectronVolt' while '1MeV' stands for '1 Mega ElectronVolt'"
         )
         )

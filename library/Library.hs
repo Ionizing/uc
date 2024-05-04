@@ -277,24 +277,31 @@ quantity number prefix unit = Quantity {number=number, prefix=prefix, unit=unit}
 
 instance PrintfArg Quantity where
     formatArg Quantity {number=number, prefix=prefix, unit=unit} fmt
-        | fmtChar (vFmt 'Q' fmt) == 'Q' = showsFull
-        | fmtChar (vFmt 'q' fmt) == 'q' = showsAbbr
+        | fmtCharIsQ || fmtCharIsq = formatString strTotal strFmt
         | otherwise = errorBadFormat $ fmtChar fmt
             where
-            strFmt = fmt {fmtChar='s', fmtPrecision=Nothing, fmtWidth=Nothing}
-            showsFull = numberFull . prefixFull . unitFull
+            fmtCharIsQ = fmtChar (vFmt 'Q' fmt) == 'Q'
+            fmtCharIsq = fmtChar (vFmt 'q' fmt) == 'q'
+            isAlternate = fmtAlternate fmt              -- Disable unit by default
+
+            blankFmt = fmt {fmtChar='s', fmtWidth=Nothing, fmtPrecision=Nothing}
+
+            strFmt = fmt {fmtChar='s', fmtPrecision=Nothing} -- width used here
+            numFmt = fmt {fmtChar='f', fmtWidth=Nothing} -- precision used here
+
+            strTotal = numStr ++ delim1 ++ preStr ++ delim2 ++ unitStr
                 where
-                numberFull = formatRealFloat number fmt {fmtChar='f'} . (" " ++)
-                prefixFull' = formatArg prefix strFmt {fmtChar='P'}
-                prefixFull = if prefix == None
-                    then prefixFull'
-                    else prefixFull' . (" " ++)
-                unitFull   = formatArg unit   strFmt {fmtChar='U'}
-            showsAbbr = numberAbbr . prefixAbbr . unitAbbr
-                where
-                numberAbbr = formatRealFloat number fmt {fmtChar='f'} . (" " ++)
-                prefixAbbr = formatArg prefix strFmt {fmtChar='p'}
-                unitAbbr   = formatArg unit   strFmt {fmtChar='u'}
+                numStr = formatRealFloat number numFmt ""
+
+                delim1  = if isAlternate then " " else ""
+                preStr  = formatArg prefix preFmt ""
+                preFmt  = if fmtCharIsQ then blankFmt {fmtChar='P'} else blankFmt {fmtChar='p'}
+
+                delim2 | not isAlternate && null preStr = " "
+                       | fmtCharIsQ && not (null preStr) = " "
+                       | otherwise = ""
+                unitStr = if isAlternate then formatArg unit unitFmt "" else ""
+                unitFmt = if fmtCharIsQ then blankFmt {fmtChar='U'} else blankFmt {fmtChar='u'}
 
 
 parseQuantityNoPrefix :: Parser Quantity
