@@ -350,7 +350,7 @@ normalizePrefix Quantity {number=_number, prefix=_prefix, unit=_unit} = Quantity
 convertRatioEvToOther :: Map Unit Double
 convertRatioEvToOther = fromAscList [
       (ElectronVolt,   1.0)
-    , (CaloriePerMole, 1.60217733 * 6.0223 * 1E4 / 4184)
+    , (CaloriePerMole, 1.60217733 * 6.0223 * 1E4 / 4.184)
     , (JoulePerMole,   1.60217733 * 6.0223 * 1E4)
     , (Kelvin,         1.160451812E4)
     , (Hartree,        1.0 / 27.2114)

@@ -34,7 +34,7 @@ app = App
     ))
     <*> option str (
         metavar "FORMAT" <> long "fmt" <> short 'f' <> value "%12.3q"
-    <>  help "Format the output. Strings like '%10.5q' and '%10.5q' are available."
+    <>  help "Format the output. Strings like '%10.5q' and '%#10.5q' are available."
     )
 
 
